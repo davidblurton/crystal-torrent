@@ -1,0 +1,13 @@
+name: torrent
+version: 0.1.0
+
+authors:
+  - David Blurton <david.blurton@gmail.com>
+
+targets:
+  torrent:
+    main: src/torrent.cr
+
+crystal: 0.23.1
+
+license: MIT
