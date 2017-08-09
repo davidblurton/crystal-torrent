@@ -1,34 +1,39 @@
 require "http/client"
-require "digest"
-require "uri"
 require "./bemcoding"
+require "./peer_client"
+require "./torrent_file"
+require "./tracker"
 
-module Torrent
-  response = HTTP::Client.get "http://localhost:8000/pope.jpg.torrent"
+torrent_url = "https://s3-eu-west-1.amazonaws.com/bittorent-test/pope.jpg?torrent"
+peer_id = "torrlang10axeltest10"
 
-  if response.status_code != 200
-    puts "Couldn't get torrent"
-    exit 1
-  end
+response = HTTP::Client.get torrent_url
+tf = TorrentFile.new response.body
 
-  response.body
+HTTP::Client.get build_tracker_url(tf.announce, tf.info_hash, peer_id, tf.length)
 
-  parser = Parser.new response.body
-  tf = parser.decode()
-
-  info = parser.info()
-
-  digest = Digest::SHA1.digest(info)
-
-  bs = digest.map {|d| d.chr.ascii? ? URI.escape(d.chr.to_s) : "%#{d.to_s(16)}"}.join
-
-  url = case tf
-    when Hash
-    tf["announce"].to_s
-  end
-
-  if url
-  	endpoint = "#{url}?info_hash=#{bs}&peer_id=torrlang10axeltest10&port=6881&compact=1&downloaded=0&event=started&uploaded=0"
-    HTTP::Client.get endpoint
-  end
-end
+# case decoded
+#   when Hash
+#   peers = decoded.fetch("peers").to_s
+#
+#   poos = peers.bytes.in_groups_of(6, filled_up_with=0.to_u8).map { |peer|
+# 		case peer
+#       when Array
+#       ip = Slice.new(peer[0, 4].to_unsafe, 4)
+#       port = Slice.new(peer[4, 2].to_unsafe, 2)
+#
+#       ip.map(&.to_i).join('.')
+#
+#       i = IO::ByteFormat::NetworkEndian.decode(UInt32, ip)
+#       p = IO::ByteFormat::NetworkEndian.decode(UInt16, port)
+#
+#       {i, p}
+#     else
+# 	    raise "Peer wasn't an array"
+#     end
+#   }
+#
+# 	ip, port = poos[1]
+#
+# client = PeerClient.new ip, port
+# client.handshake(info_hash, peer_id)
