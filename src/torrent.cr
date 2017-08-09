@@ -1,39 +1,50 @@
 require "http/client"
+require "digest"
+require "file"
 require "./bemcoding"
 require "./peer_client"
 require "./torrent_file"
 require "./tracker"
+require "./tracker_response"
+
+alias InfoHash = StaticArray(UInt8, 20)
 
 torrent_url = "https://s3-eu-west-1.amazonaws.com/bittorent-test/pope.jpg?torrent"
-peer_id = "torrlang10axeltest10"
+peer_id = "torrlang10davidtest1"
 
 response = HTTP::Client.get torrent_url
 tf = TorrentFile.new response.body
+tf.length
 
-HTTP::Client.get build_tracker_url(tf.announce, tf.info_hash, peer_id, tf.length)
+response = HTTP::Client.get build_tracker_url(tf.announce, tf.info_hash, peer_id, tf.length)
+tr = TrackerResponse.new response.body
 
-# case decoded
-#   when Hash
-#   peers = decoded.fetch("peers").to_s
-#
-#   poos = peers.bytes.in_groups_of(6, filled_up_with=0.to_u8).map { |peer|
-# 		case peer
-#       when Array
-#       ip = Slice.new(peer[0, 4].to_unsafe, 4)
-#       port = Slice.new(peer[4, 2].to_unsafe, 2)
-#
-#       ip.map(&.to_i).join('.')
-#
-#       i = IO::ByteFormat::NetworkEndian.decode(UInt32, ip)
-#       p = IO::ByteFormat::NetworkEndian.decode(UInt16, port)
-#
-#       {i, p}
-#     else
-# 	    raise "Peer wasn't an array"
-#     end
-#   }
-#
-# 	ip, port = poos[1]
-#
-# client = PeerClient.new ip, port
-# client.handshake(info_hash, peer_id)
+peer = tr.peers.last
+
+client = PeerClient.new peer[0], peer[1]
+client.handshake(tf.info_hash, peer_id)
+
+client.send_message(0x0001, 1)
+client.receive_message()
+
+client.send_message(0x0001, 2)
+client.receive_message()
+
+io = IO::Memory.new
+
+client.send_message(0x0013, 6, 0, 0, tf.length)
+piece = client.receive_message().fetch("block").as(Bytes)
+io.write(piece)
+
+io.rewind
+data = io.to_slice
+
+if Digest::SHA1.digest(data).map(&.to_s(16)) == tf.pieces.map(&.to_s(16))
+  puts "SHA1 verified"
+else
+  raise "SHA1 mismatch"
+end
+
+puts "Done"
+
+File.write(tf.name, data)

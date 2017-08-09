@@ -19,6 +19,10 @@ class TorrentFile
     @decoded["announce"].as(String)
   end
 
+  def pieces()
+    self.info["pieces"].as(String).bytes
+  end
+
   def length()
     self.info["length"].as(Int32)
   end
@@ -27,7 +31,7 @@ class TorrentFile
     self.info["name"].as(String)
   end
 
-  def info_hash()
+  def info_hash() : InfoHash
     Digest::SHA1.digest(@parser.info())
   end
 end
