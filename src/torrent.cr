@@ -30,16 +30,10 @@ client.receive_message()
 client.send_message(0x0001, 2)
 client.receive_message()
 
-io = IO::Memory.new
-
 client.send_message(0x0013, 6, 0, 0, tf.length)
 piece = client.receive_message().fetch("block").as(Bytes)
-io.write(piece)
 
-io.rewind
-data = io.to_slice
-
-if Digest::SHA1.digest(data).map(&.to_s(16)) == tf.pieces.map(&.to_s(16))
+if Digest::SHA1.digest(piece).map(&.to_s(16)) == tf.pieces.map(&.to_s(16))
   puts "SHA1 verified"
 else
   raise "SHA1 mismatch"
@@ -47,4 +41,4 @@ end
 
 puts "Done"
 
-File.write(tf.name, data)
+File.write(tf.name, piece)
