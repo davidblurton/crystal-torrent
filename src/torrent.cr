@@ -14,15 +14,19 @@ peer_id = "torrlang10davidtest1"
 
 response = HTTP::Client.get torrent_url
 tf = TorrentFile.new response.body
+puts "Got torrent file"
 tf.length
 
 response = HTTP::Client.get build_tracker_url(tf.announce, tf.info_hash, peer_id, tf.length)
 tr = TrackerResponse.new response.body
+puts "Got response from tracker"
 
 peer = tr.peers.last
+puts "Connecting to peer..."
 
 client = PeerClient.new peer[0], peer[1]
 client.handshake(tf.info_hash, peer_id)
+puts "Completed handshake"
 
 client.send_message(0x0001, 1)
 client.receive_message()
